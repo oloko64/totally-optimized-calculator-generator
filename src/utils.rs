@@ -32,7 +32,7 @@ pub fn calc_result(n1: i32, n2: i32, op: &char) -> NumType {
     }
 }
 
-pub fn add_to_block(block_string: &mut String, n1: i32, n2: i32, op: &char, res: &NumType) {
+pub fn add_to_block(block_string: &mut String, n1: u32, n2: u32, op: &char, res: &NumType) {
     match res {
         NumType::Int(i) => write!(block_string, "if num1 == {n1} and sign == \"{op}\" and num2 == {n2}:\n    print(\"{n1}{op}{n2} = {i}\")\n").unwrap(),
         NumType::Float(f) => write!(block_string, "if num1 == {n1} and sign == \"{op}\" and num2 == {n2}:\n    print(\"{n1}{op}{n2} = {f:.2}\")\n").unwrap(),

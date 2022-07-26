@@ -1,6 +1,8 @@
 mod utils;
 
 use rayon::prelude::*;
+use std::env;
+use std::error::Error;
 use std::io::Write;
 use std::{fs, sync::Mutex};
 
@@ -10,20 +12,38 @@ fn main() {
 
     // You can set the maximum number that the calculator can process here, but I don't recommend you to go over 100, it will crash when you try to open the generated file. :)
     // If you use a value of 1000 it will generate a file with +8mi lines and around 200MB.
-    let maximum_number = 100;
+    let default_maximum_number: u32 = 100;
 
     // ##############################################################################
     // ############################## DON'T EDIT ####################################
     // ##############################################################################
+    let args = env::args().collect::<Vec<_>>();
+    let maximum_number = match convert_max_to_u32(&args) {
+        Ok(arg) => {
+            println!("\nUsing the maximum number of \"{}\"\n", arg);
+            arg
+        },
+        Err(_) => {
+            println!("\nThe maximum number is not a valid number, using the default value of: \"{}\"\n", default_maximum_number);
+            default_maximum_number
+        }
+    };
     create_header(file);
     create_body(file, maximum_number);
+}
+
+fn convert_max_to_u32(args: &Vec<String>) -> Result<u32, Box<dyn Error>> {
+    if args.len() < 2 {
+        return Err(From::from("The maximum number is not specified"));
+    }
+    Ok(args[1].parse::<u32>()?)
 }
 
 fn create_header(file: &str) {
     fs::write(file, utils::get_header_text()).expect("Unable to write to file");
 }
 
-fn create_body(file: &str, max: i32) {
+fn create_body(file: &str, max: u32) {
     let mut file = fs::OpenOptions::new()
         .write(true)
         .append(true) // This is needed to append to file
@@ -37,12 +57,12 @@ fn create_body(file: &str, max: i32) {
                 .into_par_iter()
                 .enumerate()
                 .for_each(|(n1, _)| {
-                    let res: utils::NumType = utils::calc_result(n1.try_into().unwrap(), n2, op);
+                    let res: utils::NumType = utils::calc_result(n1.try_into().unwrap(), n2.try_into().unwrap(), op);
                     let mut guard = block_string.lock().unwrap();
                     utils::add_to_block(&mut guard, n1.try_into().unwrap(), n2, op, &res);
                 });
         });
-        write!(file, "{}", block_string.lock().unwrap()).unwrap();
+        write!(file, "{}", block_string.lock().unwrap()).expect("Unable to write to file");
     }
     drop(file);
 }
