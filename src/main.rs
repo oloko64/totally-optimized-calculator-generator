@@ -1,12 +1,13 @@
 mod utils;
 
-use rayon::prelude::*;
 use std::env;
 use std::error::Error;
 use std::io::Write;
+use std::time::Instant;
 use std::{fs, sync::Mutex};
 
 fn main() {
+    let time = Instant::now();
     // You can set the file name here.
     let file = "calc.py";
 
@@ -22,14 +23,18 @@ fn main() {
         Ok(arg) => {
             println!("\nUsing the maximum number of \"{}\"\n", arg);
             arg
-        },
+        }
         Err(_) => {
-            println!("\nThe maximum number is not a valid number, using the default value of: \"{}\"\n", default_maximum_number);
+            println!(
+                "\nThe maximum number is not a valid number, using the default value of: \"{}\"\n",
+                default_maximum_number
+            );
             default_maximum_number
         }
     };
     create_header(file);
     create_body(file, maximum_number);
+    println!("Time taken to create file: {:.4}s", time.elapsed().as_secs_f32());
 }
 
 fn convert_max_to_u32(args: &Vec<String>) -> Result<u32, Box<dyn Error>> {
@@ -52,15 +57,13 @@ fn create_body(file: &str, max: u32) {
 
     for op in ['+', '-', '*', '/'].iter() {
         let block_string = Mutex::from(String::new());
-        (0..=max).into_par_iter().for_each(|n2| {
-            (0..max + 1)
-                .into_par_iter()
-                .enumerate()
-                .for_each(|(n1, _)| {
-                    let res: utils::NumType = utils::calc_result(n1.try_into().unwrap(), n2.try_into().unwrap(), op);
-                    let mut guard = block_string.lock().unwrap();
-                    utils::add_to_block(&mut guard, n1.try_into().unwrap(), n2, op, &res);
-                });
+        (0..=max).into_iter().for_each(|n2| {
+            (0..max + 1).into_iter().enumerate().for_each(|(n1, _)| {
+                let res: utils::NumType =
+                    utils::calc_result(n1.try_into().unwrap(), n2.try_into().unwrap(), op);
+                let mut guard = block_string.lock().unwrap();
+                utils::add_to_block(&mut guard, n1.try_into().unwrap(), n2, op, &res);
+            });
         });
         write!(file, "{}", block_string.lock().unwrap()).expect("Unable to write to file");
     }
