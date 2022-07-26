@@ -3,13 +3,19 @@ mod utils;
 use std::fs;
 
 fn main() {
+    // You can set the file name here.
     let file = "calc.py";
-    // Don't go over 100, it will crash when you try to run open the generated file.
-    // If you use a value of 1000 it will generate a file with +8mi lines and over 200MB.
-    let max = 100;
 
+    // You can set the maximum number that the calculator can process here, but I don't recommend you to go over 100, it will crash when you try to open the generated file. :)
+    // If you use a value of 1000 it will generate a file with +8mi lines and around 200MB.
+    let maximum_number = 100;
+
+
+    // ##############################################################################
+    // ############################## DON'T EDIT ####################################
+    // ##############################################################################
     create_header(file);
-    create_body(file, max);
+    create_body(file, maximum_number);
 }
 
 fn create_header(file: &str) {
