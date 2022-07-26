@@ -1,6 +1,7 @@
 mod utils;
 
 use rayon::prelude::*;
+use std::io::Write;
 use std::{fs, sync::Mutex};
 
 fn main() {
@@ -23,25 +24,25 @@ fn create_header(file: &str) {
 }
 
 fn create_body(file: &str, max: i32) {
-    let file = Mutex::from(
-        fs::OpenOptions::new()
-            .write(true)
-            .append(true) // This is needed to append to file
-            .open(file)
-            .unwrap(),
-    );
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .append(true) // This is needed to append to file
+        .open(file)
+        .unwrap();
 
     for op in ['+', '-', '*', '/'].iter() {
+        let block_string = Mutex::from(String::new());
         (0..=max).into_par_iter().for_each(|n2| {
             (0..max + 1)
                 .into_par_iter()
                 .enumerate()
                 .for_each(|(n1, _)| {
                     let res: utils::NumType = utils::calc_result(n1.try_into().unwrap(), n2, op);
-                    let mut guard = file.lock().unwrap();
-                    utils::write_format_line(&mut guard, n1.try_into().unwrap(), n2, op, &res);
+                    let mut guard = block_string.lock().unwrap();
+                    utils::add_to_block(&mut guard, n1.try_into().unwrap(), n2, op, &res);
                 });
         });
+        write!(file, "{}", block_string.lock().unwrap()).unwrap();
     }
     drop(file);
 }
