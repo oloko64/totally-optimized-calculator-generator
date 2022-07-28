@@ -5,6 +5,7 @@ use std::error::Error;
 use std::io::Write;
 use std::time::Instant;
 use std::{fs, sync::Mutex};
+use rayon::prelude::*;
 
 fn main() {
     let time = Instant::now();
@@ -49,23 +50,23 @@ fn create_header(file: &str) {
 }
 
 fn create_body(file: &str, max: u32) {
-    let mut file = fs::OpenOptions::new()
+    let file = Mutex::from(fs::OpenOptions::new()
         .write(true)
         .append(true) // This is needed to append to file
         .open(file)
-        .unwrap();
+        .unwrap());
 
-    for op in ['+', '-', '*', '/'].iter() {
-        let block_string = Mutex::from(String::new());
+    ['+', '-', '*', '/'].par_iter().for_each(|op| {
+        let mut block_string = String::new();
         (0..=max).into_iter().for_each(|n2| {
             (0..max + 1).into_iter().enumerate().for_each(|(n1, _)| {
                 let res: utils::NumType =
                     utils::calc_result(n1.try_into().unwrap(), n2.try_into().unwrap(), op);
-                let mut guard = block_string.lock().unwrap();
-                utils::add_to_block(&mut guard, n1.try_into().unwrap(), n2, op, &res);
+                utils::add_to_block(&mut block_string, n1.try_into().unwrap(), n2, op, &res);
             });
         });
-        write!(file, "{}", block_string.lock().unwrap()).expect("Unable to write to file");
-    }
+        let mut guard = file.lock().unwrap();
+        write!(guard, "{}", block_string).expect("Unable to write to file");
+    });
     drop(file);
 }
