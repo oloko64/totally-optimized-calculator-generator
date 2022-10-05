@@ -1,11 +1,11 @@
 mod utils;
 
+use rayon::prelude::*;
 use std::env;
 use std::error::Error;
+use std::fs;
 use std::io::Write;
 use std::time::Instant;
-use std::{fs, sync::Mutex};
-use rayon::prelude::*;
 
 fn main() {
     let time = Instant::now();
@@ -35,7 +35,10 @@ fn main() {
     };
     create_header(file);
     create_body(file, maximum_number);
-    println!("Time taken to create file: {:.4}s", time.elapsed().as_secs_f32());
+    println!(
+        "Time taken to create file: {:.4}s",
+        time.elapsed().as_secs_f32()
+    );
 }
 
 fn convert_max_to_u32(args: &Vec<String>) -> Result<u32, Box<dyn Error>> {
@@ -50,11 +53,11 @@ fn create_header(file: &str) {
 }
 
 fn create_body(file: &str, max: u32) {
-    let file = Mutex::from(fs::OpenOptions::new()
+    let file = fs::OpenOptions::new()
         .write(true)
         .append(true) // This is needed to append to file
         .open(file)
-        .unwrap());
+        .unwrap();
 
     ['+', '-', '*', '/'].par_iter().for_each(|op| {
         let mut block_string = String::new();
@@ -65,8 +68,7 @@ fn create_body(file: &str, max: u32) {
                 utils::add_to_block(&mut block_string, n1.try_into().unwrap(), n2, op, &res);
             });
         });
-        let mut guard = file.lock().unwrap();
-        write!(guard, "{}", block_string).expect("Unable to write to file");
+        write!(&file, "{}", block_string).expect("Unable to write to file");
     });
     drop(file);
 }
