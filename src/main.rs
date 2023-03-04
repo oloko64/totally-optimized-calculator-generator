@@ -4,6 +4,7 @@ use std::error::Error;
 use std::fs;
 use std::io::{BufWriter, Write};
 use std::time::Instant;
+use utils::Operators::{Add, Div, Mul, Sub};
 
 use clap::Parser;
 
@@ -59,14 +60,14 @@ where
             .open(file.as_ref())?,
     );
 
-    for op in ['+', '-', '*', '/'] {
+    for op in [Add, Sub, Mul, Div] {
         for n2 in 0..=max {
             for n1 in 0..=max {
-                let res = utils::calc_result(n1, n2, op);
+                let res = utils::calc_result(n1, n2, &op);
                 file.write_all(res.as_bytes())?;
             }
         }
-        file.flush()?;
     }
+    file.flush()?;
     Ok(())
 }
