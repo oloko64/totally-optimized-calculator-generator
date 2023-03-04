@@ -1,40 +1,21 @@
-use std::fmt::Write as _;
-
-pub enum NumType {
-    Int(i32),
-    Float(f64),
+pub enum Operators {
+    Add,
+    Sub,
+    Mul,
+    Div,
 }
 
-pub fn get_header_text() -> String {
-    "print(\"Welcome to the calculator MK I\")
-num1 = input(\"Insert the first number: \")
-sign = input(\"Insert the operator (+, -, *, /): \")
-num2 = input(\"Insert the second number: \")
-num1 = int(num1)
-num2 = int(num2)
-"
-    .to_string()
-}
-
-pub fn calc_result(n1: i32, n2: i32, op: &char) -> NumType {
+pub fn calc_result(n1: u32, n2: u32, op: &Operators) -> String {
     match op {
-        '+' => NumType::Int(n1 + n2),
-        '-' => NumType::Int(n1 - n2),
-        '*' => NumType::Int(n1 * n2),
-        '/' => {
-            if n2 as f64 == 0 as f64 {
-                NumType::Float(0.0)
+        Operators::Add => format!("if num1 == {n1} and sign == \"+\" and num2 == {n2}:\n    print(\"{n1} + {n2} = {res}\")\n", res = n1 + n2),     
+        Operators::Sub => format!("if num1 == {n1} and sign == \"-\" and num2 == {n2}:\n    print(\"{n1} - {n2} = {res}\")\n", res = n1 as i32 - n2 as i32),
+        Operators::Mul => format!("if num1 == {n1} and sign == \"*\" and num2 == {n2}:\n    print(\"{n1} * {n2} = {res}\")\n", res = n1 * n2),
+        Operators::Div => {
+            if f64::from(n2) == 0.0 {
+                format!("if num1 == {n1} and sign == \"/\" and num2 == {n2}:\n    print(\"{n1} / {n2} = {res}\")\n", res = 0.0)
             } else {
-                NumType::Float(n1 as f64 / n2 as f64)
+                format!("if num1 == {n1} and sign == \"/\" and num2 == {n2}:\n    print(\"{n1} / {n2} = {res:.2}\")\n", res = f64::from(n1) / f64::from(n2))
             }
         }
-        _ => NumType::Int(0),
     }
-}
-
-pub fn add_to_block(block_string: &mut String, n1: u32, n2: u32, op: &char, res: &NumType) {
-    match res {
-        NumType::Int(i) => write!(block_string, "if num1 == {n1} and sign == \"{op}\" and num2 == {n2}:\n    print(\"{n1}{op}{n2} = {i}\")\n").unwrap(),
-        NumType::Float(f) => write!(block_string, "if num1 == {n1} and sign == \"{op}\" and num2 == {n2}:\n    print(\"{n1}{op}{n2} = {f:.2}\")\n").unwrap(),
-    };
 }
