@@ -4,7 +4,8 @@ use rayon::prelude::*;
 use std::env;
 use std::error::Error;
 use std::fs;
-use std::io::Write;
+use std::io::{BufWriter, Write};
+use std::sync::Mutex;
 use std::time::Instant;
 
 fn main() {
@@ -20,18 +21,14 @@ fn main() {
     // ############################## DON'T EDIT ####################################
     // ##############################################################################
     let args = env::args().collect::<Vec<_>>();
-    let maximum_number = match convert_max_to_u32(&args) {
-        Ok(arg) => {
-            println!("\nUsing the maximum number of \"{}\"\n", arg);
-            arg
-        }
-        Err(_) => {
-            println!(
-                "\nThe maximum number is not a valid number, using the default value of: \"{}\"\n",
-                default_maximum_number
-            );
-            default_maximum_number
-        }
+    let maximum_number = if let Ok(arg) = convert_max_to_u32(&args) {
+        println!("\nUsing the maximum number of \"{arg}\"\n");
+        arg
+    } else {
+        println!(
+                     "\nThe maximum number is not a valid number, using the default value of: \"{default_maximum_number}\"\n"
+                 );
+        default_maximum_number
     };
     create_header(file);
     create_body(file, maximum_number);
@@ -49,26 +46,33 @@ fn convert_max_to_u32(args: &Vec<String>) -> Result<u32, Box<dyn Error>> {
 }
 
 fn create_header(file: &str) {
-    fs::write(file, utils::get_header_text()).expect("Unable to write to file");
+    let header = r#"
+print("Welcome to the calculator MK I")
+num1 = input("Insert the first number: ")
+sign = input("Insert the operator (+, -, *, /): ")
+num2 = input("Insert the second number: ")
+num1 = int(num1)
+num2 = int(num2)
+"#;
+    fs::write(file, header).expect("Unable to write to file");
 }
 
 fn create_body(file: &str, max: u32) {
-    let file = fs::OpenOptions::new()
-        .write(true)
-        .append(true) // This is needed to append to file
-        .open(file)
-        .unwrap();
+    let file = Mutex::new(BufWriter::new(
+        fs::OpenOptions::new()
+            .write(true)
+            .append(true) // This is needed to append to file
+            .open(file)
+            .unwrap(),
+    ));
 
     ['+', '-', '*', '/'].par_iter().for_each(|op| {
-        let mut block_string = String::new();
-        (0..=max).into_iter().for_each(|n2| {
-            (0..max + 1).into_iter().enumerate().for_each(|(n1, _)| {
-                let res: utils::NumType =
-                    utils::calc_result(n1.try_into().unwrap(), n2.try_into().unwrap(), op);
-                utils::add_to_block(&mut block_string, n1.try_into().unwrap(), n2, op, &res);
-            });
-        });
-        write!(&file, "{}", block_string).expect("Unable to write to file");
+        for n2 in 0..=max {
+            for n1 in 0..=max {
+                let res = utils::calc_result(n1, n2, *op);
+                file.lock().unwrap().write_all(res.as_bytes()).unwrap();
+            }
+        }
+        file.lock().unwrap().flush().unwrap();
     });
-    drop(file);
 }
