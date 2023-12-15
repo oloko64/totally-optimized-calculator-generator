@@ -1,6 +1,6 @@
 [package]
 name = "calc-creator"
-version = "0.1.1"
+version = "0.1.110"
 edition = "2021"
 
 [profile.release]
@@ -12,4 +12,4 @@ strip = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "4.1.8", features = ["derive"] }
+clap = { version = "4.4.11", features = ["derive"] }

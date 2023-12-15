@@ -1,12 +1,10 @@
 mod utils;
 
-use std::error::Error;
+use clap::Parser;
 use std::fs;
 use std::io::{BufWriter, Write};
 use std::time::Instant;
 use utils::Operators::{Add, Div, Mul, Sub};
-
-use clap::Parser;
 
 /// This is a calculator that generates a python file that can calculate any number from 0 to the maximum number you specify.
 #[derive(Parser)]
@@ -21,7 +19,7 @@ struct Args {
     max: u32,
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), std::io::Error> {
     let args = Args::parse();
     let time = Instant::now();
     create_header(&args.file)?;
@@ -33,7 +31,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn create_header<T>(file: T) -> Result<(), Box<dyn Error>>
+fn create_header<T>(file: T) -> Result<(), std::io::Error>
 where
     T: AsRef<str>,
 {
@@ -49,7 +47,7 @@ num2 = int(num2)
     Ok(())
 }
 
-fn create_body<T>(file: T, max: u32) -> Result<(), Box<dyn Error>>
+fn create_body<T>(file: T, max: u32) -> Result<(), std::io::Error>
 where
     T: AsRef<str>,
 {
