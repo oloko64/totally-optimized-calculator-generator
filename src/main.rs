@@ -56,7 +56,7 @@ where
             .open(file.as_ref())?,
     );
 
-    let (tx, rx) = std::sync::mpsc::channel::<String>();
+    let (tx, rx) = std::sync::mpsc::sync_channel::<String>(32);
     // Create a worker pool to write to file in parallel
     let writer_handle = std::thread::spawn(move || {
         for chunk in rx {
