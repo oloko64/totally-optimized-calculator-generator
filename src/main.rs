@@ -56,7 +56,17 @@ where
             .open(file.as_ref())?,
     );
 
-    let arc_file = std::sync::Mutex::new(&mut file);
+    let (tx, rx) = std::sync::mpsc::channel::<String>();
+    // Create a worker pool to write to file in parallel
+    let writer_handle = std::thread::spawn(move || {
+        for chunk in rx {
+            file.write_all(chunk.as_bytes()).unwrap();
+        }
+
+        file.flush().unwrap();
+    });
+
+    // let arc_file = std::sync::Mutex::new(&mut file);
     [Add, Sub, Mul, Div].par_iter().for_each(|op| {
         (0..=max).into_par_iter().for_each(|n2| {
             let mut buffer = String::new();
@@ -64,10 +74,12 @@ where
                 let res = utils::calc_result(n1, n2, op);
                 buffer.push_str(&res);
             }
-            let mut file = arc_file.lock().unwrap();
-            file.write_all(buffer.as_bytes()).unwrap();
+            tx.send(buffer).unwrap();
         });
     });
+
+    drop(tx); // Close the channel
+    writer_handle.join().unwrap();
 
     // Old code without parallelism
     // for op in [Add, Sub, Mul, Div] {
@@ -78,6 +90,6 @@ where
     //         }
     //     }
     // }
-    file.flush()?;
+    // file.flush()?;
     Ok(())
 }
