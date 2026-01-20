@@ -21,11 +21,20 @@ struct Args {
     max: u32,
 }
 
-fn main() -> Result<(), std::io::Error> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let time = Instant::now();
-    create_header(&args.file)?;
-    create_body(args.file, args.max)?;
+    let file = fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(&args.file)?;
+    let mut writer = FileWriter {
+        file: BufWriter::new(file),
+    };
+    create_header(&mut writer)?;
+    create_body(&mut writer, args.max)?;
+
     println!(
         "Time taken to create file: {:.4}s",
         time.elapsed().as_secs_f32()
@@ -33,7 +42,10 @@ fn main() -> Result<(), std::io::Error> {
     Ok(())
 }
 
-fn create_header<T: AsRef<str>>(file: T) -> Result<(), std::io::Error> {
+fn create_header<T>(file: &mut T) -> Result<(), std::io::Error>
+where
+    for<'a> T: std::io::Write,
+{
     let header = r#"
 print("Welcome to the calculator MK I")
 num1 = input("Insert the first number: ")
@@ -42,44 +54,39 @@ num2 = input("Insert the second number: ")
 num1 = int(num1)
 num2 = int(num2)
 "#;
-    fs::write(file.as_ref(), header)?;
+    file.write_all(header.as_bytes())?;
+    file.flush()?;
     Ok(())
 }
 
-fn create_body<T>(file: T, max: u32) -> Result<(), std::io::Error>
+pub fn create_body<T>(writer: &mut T, max: u32) -> Result<(), Box<dyn std::error::Error>>
 where
-    T: AsRef<str>,
+    for<'a> T: std::io::Write + Send,
 {
-    let mut file = BufWriter::new(
-        fs::OpenOptions::new()
-            .append(true) // This is needed to append to file
-            .open(file.as_ref())?,
-    );
+    let (tx, rx) = std::sync::mpsc::sync_channel::<Vec<u8>>(64);
 
-    let (tx, rx) = std::sync::mpsc::sync_channel::<String>(32);
-    // Create a worker pool to write to file in parallel
-    let writer_handle = std::thread::spawn(move || {
-        for chunk in rx {
-            file.write_all(chunk.as_bytes()).unwrap();
-        }
-
-        file.flush().unwrap();
-    });
-
-    // let arc_file = std::sync::Mutex::new(&mut file);
-    [Add, Sub, Mul, Div].par_iter().for_each(|op| {
-        (0..=max).into_par_iter().for_each(|n2| {
-            let mut buffer = String::with_capacity(128 * (max as usize + 1));
-            for n1 in 0..=max {
-                let res = utils::calc_result(n1, n2, op);
-                buffer.push_str(&res);
+    std::thread::scope(|s| {
+        s.spawn(move || {
+            for chunk in rx {
+                writer.write_all(&chunk).unwrap();
             }
-            tx.send(buffer).unwrap();
-        });
-    });
 
-    drop(tx); // Close the channel
-    writer_handle.join().unwrap();
+            writer.flush().unwrap();
+        });
+
+        let estimated_size = (max as usize + 1) * 110;
+        [Add, Sub, Mul, Div].par_iter().for_each(|op| {
+            (0..=max).into_par_iter().for_each(|n2| {
+                let mut buffer = Vec::with_capacity(estimated_size);
+                for n1 in 0..=max {
+                    utils::calc_result(n1, n2, op, &mut buffer).unwrap();
+                }
+                tx.send(buffer).unwrap();
+            });
+        });
+
+        drop(tx); // Close the channel
+    });
 
     // Old code without parallelism
     // for op in [Add, Sub, Mul, Div] {
@@ -93,3 +100,26 @@ where
     // file.flush()?;
     Ok(())
 }
+
+struct FileWriter {
+    file: BufWriter<fs::File>,
+}
+
+impl Write for FileWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.file.write(buf)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.file.flush()
+    }
+}
+
+// #[bench]
+// fn bench_create_body(b: &mut test::Bencher) {
+//     b.iter(|| {
+//         let buffer = Vec::new();
+//         let writer = BufWriter::new(buffer);
+//         create_body(writer, 100).unwrap();
+//     });
+// }
