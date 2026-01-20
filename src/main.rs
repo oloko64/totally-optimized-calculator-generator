@@ -1,6 +1,7 @@
 mod utils;
 
 use clap::Parser;
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::fs;
 use std::io::{BufWriter, Write};
 use std::time::Instant;
@@ -14,7 +15,8 @@ struct Args {
     #[arg(short, long, default_value = "calc.py")]
     file: String,
 
-    /// The maximum number that the calculator can process. (don't use over 3000)
+    // On my machine, using 3000 takes about 1.1s to generate the 2.7GB file.
+    /// The maximum number that the calculator can process. (avoid using over 3000)
     #[arg(short, long, default_value = "100")]
     max: u32,
 }
@@ -31,10 +33,7 @@ fn main() -> Result<(), std::io::Error> {
     Ok(())
 }
 
-fn create_header<T>(file: T) -> Result<(), std::io::Error>
-where
-    T: AsRef<str>,
-{
+fn create_header<T: AsRef<str>>(file: T) -> Result<(), std::io::Error> {
     let header = r#"
 print("Welcome to the calculator MK I")
 num1 = input("Insert the first number: ")
@@ -53,19 +52,32 @@ where
 {
     let mut file = BufWriter::new(
         fs::OpenOptions::new()
-            .write(true)
             .append(true) // This is needed to append to file
             .open(file.as_ref())?,
     );
 
-    for op in [Add, Sub, Mul, Div] {
-        for n2 in 0..=max {
+    let arc_file = std::sync::Mutex::new(&mut file);
+    [Add, Sub, Mul, Div].par_iter().for_each(|op| {
+        (0..=max).into_par_iter().for_each(|n2| {
+            let mut buffer = String::new();
             for n1 in 0..=max {
-                let res = utils::calc_result(n1, n2, &op);
-                file.write_all(res.as_bytes())?;
+                let res = utils::calc_result(n1, n2, op);
+                buffer.push_str(&res);
             }
-        }
-    }
+            let mut file = arc_file.lock().unwrap();
+            file.write_all(buffer.as_bytes()).unwrap();
+        });
+    });
+
+    // Old code without parallelism
+    // for op in [Add, Sub, Mul, Div] {
+    //     for n2 in 0..=max {
+    //         for n1 in 0..=max {
+    //             let res = utils::calc_result(n1, n2, &op);
+    //             file.write_all(res.as_bytes())?;
+    //         }
+    //     }
+    // }
     file.flush()?;
     Ok(())
 }

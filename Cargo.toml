@@ -1,15 +1,15 @@
 [package]
 name = "calc-creator"
-version = "0.1.110"
-edition = "2021"
+version = "0.1.120"
+edition = "2024"
 
 [profile.release]
 lto = true
-codegen-units = 1
 strip = true
 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "4.4.11", features = ["derive"] }
+clap = { version = "4.5.54", features = ["derive"] }
+rayon = "1.11.0"
