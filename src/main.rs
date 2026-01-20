@@ -69,7 +69,7 @@ where
     // let arc_file = std::sync::Mutex::new(&mut file);
     [Add, Sub, Mul, Div].par_iter().for_each(|op| {
         (0..=max).into_par_iter().for_each(|n2| {
-            let mut buffer = String::new();
+            let mut buffer = String::with_capacity(128 * (max as usize + 1));
             for n1 in 0..=max {
                 let res = utils::calc_result(n1, n2, op);
                 buffer.push_str(&res);
