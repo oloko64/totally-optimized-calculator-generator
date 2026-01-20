@@ -7,9 +7,28 @@ edition = "2024"
 lto = true
 strip = true
 
+[[bench]]
+name = "benchmarks"
+harness = false
+
+
+# -- To run the benchmarks, uncomment the following lines and use `cargo bench` --
+# [[bin]]
+# name = "calc_creator"
+# path = "src/main.rs"
+
+# [lib]
+# name = "calc_creator_lib"
+# path = "src/main.rs"      # Using main.rs as the library root
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 clap = { version = "4.5.54", features = ["derive"] }
+itoa = "1.0.17"
 rayon = "1.11.0"
+ryu = "1.0.22"
+
+[dev-dependencies]
+criterion = { version = "0.8.1", features = ["html_reports"] }
